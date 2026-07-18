@@ -37,7 +37,7 @@ function flattenTree(node, edges, currId) {
         stroke: '#160a4a', 
         strokeWidth: 3, 
         strokeDasharray: '5, 5', // Creates a dashed pattern that will move
-        filter: 'drop-shadow(0px 0px 4px #830c0c)'
+        filter: 'drop-shadow(0px 0px 4px #f3eeee)'
       };
 
       edgeObj.markerEnd = {
