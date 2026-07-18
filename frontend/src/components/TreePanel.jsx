@@ -32,10 +32,10 @@ function flattenTree(node, edges, currId) {
       type: 'historyEdge',
     }
     if (hasSameJob) {
-      edgeObj.style = { stroke: '#7fffd4', strokeWidth: 3, strokeDasharray: 'none' }
+      edgeObj.style = { stroke: '#ff7f50', strokeWidth: 3, strokeDasharray: 'none' }
       edgeObj.markerEnd = {
         type: MarkerType.ArrowClosed,
-        color: '#7fffd4',
+        color: '#ff7f50',
         width: 15,
         height: 15,
       }
