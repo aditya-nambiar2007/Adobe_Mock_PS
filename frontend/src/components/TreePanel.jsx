@@ -32,19 +32,13 @@ function flattenTree(node, edges, currId) {
       type: 'historyEdge',
     }
     if (hasSameJob) {
-      edgeObj.style = { 
-  stroke: '#00f0ff', 
-  strokeWidth: 3, 
-  strokeDasharray: 'none',
-  filter: 'drop-shadow(0px 0px 6px rgba(0, 240, 255, 0.8))' 
-};
-
-edgeObj.markerEnd = {
-  type: MarkerType.ArrowClosed,
-  color: '#00f0ff',
-  width: 14, 
-  height: 14,
-};
+      edgeObj.style = { stroke: '#7fffd4', strokeWidth: 3, strokeDasharray: 'none' }
+      edgeObj.markerEnd = {
+        type: MarkerType.ArrowClosed,
+        color: '#7fffd4',
+        width: 15,
+        height: 15,
+      }
     }
     edges.push(edgeObj)
     const [childNodes] = flattenTree(child, edges, currId)
