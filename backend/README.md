@@ -25,8 +25,18 @@ python3 -m venv venv && source venv/bin/activate
 # 2. Dependencies (CPU-only)
 pip install -r requirements.txt
 
-# 3. Dependencies (GPU) — install AFTER requirements.txt
+# 3. Dependencies (PyTorch & Torchvision) — install AFTER requirements.txt
+# Pick the command corresponding to your system/CUDA version:
+# CUDA 12.4 (Recommended):
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+# CUDA 12.1 (Highly stable fallback):
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# CUDA 11.8 (For older CUDA setups):
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# CPU Only:
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# Default (Pip system default):
+pip install torch torchvision
 
 # 4. Configure
 cp .env.example .env
@@ -659,6 +669,21 @@ print(f"Done in {data['total_duration_ms']:.0f}ms")
 
 Models are downloaded from HuggingFace Hub on first use and cached in `~/.cache/huggingface/hub/`.
 
+### Model Pre-Installation (Optional)
+
+To avoid network delays or request timeouts during the first run, you can pre-install and download all backend models beforehand:
+
+#### Option 1: Via CLI Script
+Activate your virtual environment and run the downloader:
+```bash
+python -m app.utils.download_models
+```
+
+#### Option 2: Via API Endpoint
+While the server is running, trigger model download programmatically:
+- **Trigger Download (asynchronous)**: `POST http://localhost:8000/models/install`
+- **Check Status / Cache Status**: `GET http://localhost:8000/models/status`
+
 ### LoRA Adapters
 
 Drop a LoRA `.safetensors` file anywhere and point to it in `.env`:
@@ -751,7 +776,7 @@ Consider adding:
 
 | Problem | Fix |
 |---|---|
-| `CUDA not available` | Install CUDA-compatible PyTorch: `pip install torch==2.6.0+cu124 --index-url https://download.pytorch.org/whl/cu124` |
+| `CUDA not available` | Install CUDA-compatible PyTorch: `pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu124` (or fallback to `cu121` / `cu118` index if `cu124` fails) |
 | `CUDA out of memory` | SAM runs on CPU by default. If diffusion OOMs, set `DEVICE=cpu` in `.env` |
 | `ModuleNotFoundError: No module named 'torch'` | Run `pip install torch torchvision` |
 | `FileNotFoundError: LoRA weights not found` | Check `DIFFUSION_LORA_WEIGHTS` path in `.env` |
