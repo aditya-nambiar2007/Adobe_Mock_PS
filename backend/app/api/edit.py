@@ -114,7 +114,11 @@ async def edit_image(
     metadata_response = SceneMetadataResponse(**scene_metadata.to_dict())
 
     try:
-        plan = await planner.create_plan(request.prompt)
+        plan = await planner.create_plan(
+            request.prompt,
+            metadata=scene_metadata.to_dict(),
+            options=request.options or {},
+        )
     except GeminiError as exc:
         raise HTTPException(
             status_code=exc.status_code,

@@ -11,6 +11,11 @@ from PIL import Image
 from app.config import settings
 from app.services.execution_log import ExecutionLog, ExecutionLogEntry, LogStatus
 from app.services.model_manager import ModelManager
+from app.services.style_presets import (
+    build_style_instruction,
+    build_style_params,
+    detect_style_preset,
+)
 from app.utils.gpu import clear_gpu_aggressive, cuda_available, gpu_memory_usage
 from app.utils.image_utils import ensure_rgb, image_to_base64, save_image
 from app.utils.logger import get_logger
@@ -430,14 +435,31 @@ class OperationHandler:
         image, alpha, orig_size = self._limit_diffusion_size(image, alpha, max_dim=self._diffusion_max_dim())
 
         logger.info("Pipeline step: style_transfer with '%s'", params.get("instruction", ""))
+        style_preset = detect_style_preset(params.get("instruction", ""), params)
         service = self.model_manager.load_diffusion()
+        if style_preset == "ghibli":
+            ghibli_lora = getattr(settings, "ghibli_lora_weights", "")
+            if ghibli_lora:
+                adapter_name = getattr(settings, "ghibli_lora_adapter_name", "ghibli") or "ghibli"
+                try:
+                    service.load_lora(ghibli_lora, adapter_name=adapter_name)
+                    logger.info("Applied style-specific LoRA preset: %s", style_preset)
+                except Exception as exc:
+                    logger.warning("Failed to load %s LoRA preset: %s", style_preset, exc)
+
+        style_params = build_style_params(style_preset)
+        instruction = build_style_instruction(params.get("instruction", "apply artistic style"), style_preset)
         process_params = {
-            "instruction": params.get("instruction", "apply artistic style"),
+            "instruction": instruction,
             "guidance_scale": 7.5,
             "image_guidance_scale": 1.5,
             "strength": 0.75,
             "steps": 30,
         }
+        process_params.update(style_params)
+        for key in ("guidance_scale", "image_guidance_scale", "strength", "steps", "negative_prompt"):
+            if key in params and params[key] is not None:
+                process_params[key] = params[key]
         result = service.process("style_transfer", image, process_params)
 
         if result.size != image.size:

@@ -205,6 +205,7 @@ class DiffusionService:
         instruction = params.get("instruction", "apply artistic style")
         guidance = params.get("guidance_scale", 7.5)
         strength = params.get("strength", 0.75)
+        negative_prompt = params.get("negative_prompt", "")
 
         if self.model_type == "instruct_pix2pix":
             result = self.pipeline(
@@ -213,6 +214,7 @@ class DiffusionService:
                 num_inference_steps=params.get("steps", 30),
                 guidance_scale=guidance,
                 image_guidance_scale=params.get("image_guidance_scale", 1.5),
+                negative_prompt=negative_prompt or None,
             ).images[0]
         else:
             result = self.pipeline(
@@ -221,6 +223,7 @@ class DiffusionService:
                 num_inference_steps=params.get("steps", 30),
                 guidance_scale=guidance,
                 strength=strength,
+                negative_prompt=negative_prompt or None,
             ).images[0]
 
         return result

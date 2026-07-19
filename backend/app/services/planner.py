@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TYPE_CHECKING
 
-from app.services.gemini_service import GeminiService
+from app.services.style_presets import (
+    build_style_instruction,
+    detect_style_preset,
+)
 from app.utils.logger import get_logger
+
+if TYPE_CHECKING:
+    from app.services.gemini_service import GeminiService
 
 logger = get_logger(__name__)
 
@@ -29,18 +35,29 @@ class Planner:
     def __init__(self, gemini_service: GeminiService | None) -> None:
         self.gemini_service = gemini_service
 
-    async def create_plan(self, prompt: str) -> List[Dict[str, Any]]:
+    async def create_plan(
+        self,
+        prompt: str,
+        metadata: Dict[str, Any] | None = None,
+        options: Dict[str, Any] | None = None,
+    ) -> List[Dict[str, Any]]:
+        style_preset = detect_style_preset(prompt, options)
         if not self.gemini_service:
             # Offline Fallback Mode
             p = prompt.lower()
+            if style_preset == "ghibli":
+                return [{
+                    "operation": "change_style",
+                    "instruction": build_style_instruction(prompt, style_preset),
+                }]
             if "remove background" in p or "transparent" in p:
                 return [{"operation": "segment", "target": "main subject"}, {"operation": "remove"}]
             if "upscale" in p:
                 return [{"operation": "upscale"}]
             from app.services.gemini_service import GeminiError
             raise GeminiError("AI planning disabled (missing API key). Only basic offline commands like 'remove background' are supported.", status_code=503, code="OFFLINE_MODE")
-            
-        raw_plan = await self.gemini_service.generate_plan(prompt)
+
+        raw_plan = await self.gemini_service.generate_plan(prompt, metadata=metadata, options=options)
         validated = self._validate(raw_plan)
         logger.info("Plan validated: %d operations", len(validated))
         return validated

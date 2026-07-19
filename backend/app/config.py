@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     model_paths: Dict[str, str] = {}
     diffusion_lora_weights: str = ""
     diffusion_lora_adapter_name: str = "default"
+    ghibli_lora_weights: str = ""
+    ghibli_lora_adapter_name: str = "ghibli"
     output_directory: str = "outputs"
     upload_directory: str = "uploads"
     temp_directory: str = "temp"

@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 
 from google import genai
 
+from app.services.style_presets import build_style_instruction, detect_style_preset
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -51,11 +52,34 @@ class GeminiService:
         self.model = model
         self.client = genai.Client(api_key=api_key)
 
-    async def generate_plan(self, prompt: str) -> List[Dict[str, Any]]:
+    async def generate_plan(
+        self,
+        prompt: str,
+        metadata: Dict[str, Any] | None = None,
+        options: Dict[str, Any] | None = None,
+    ) -> List[Dict[str, Any]]:
         logger.info("Sending prompt to Gemini (%s): %.80s...", self.model, prompt)
         start = time.monotonic()
 
-        full_prompt = f"{SYSTEM_PROMPT}\n\nUser prompt: {prompt}\n\nOutput the JSON plan:"
+        style_preset = detect_style_preset(prompt, options)
+        style_context = ""
+        if style_preset == "ghibli":
+            style_context = (
+                "\n\nStyle hint:\n"
+                "If the user asks for a Ghibli or Ghibli-inspired result, prefer a single "
+                "change_style/style_transfer operation with a detailed cinematic animation prompt. "
+                "Preserve scene composition and subject identity unless the user explicitly asks for more."
+            )
+            prompt = build_style_instruction(prompt, style_preset)
+
+        metadata_context = ""
+        if metadata:
+            metadata_context = f"\n\nImage metadata: {json.dumps(metadata, ensure_ascii=False)}"
+
+        full_prompt = (
+            f"{SYSTEM_PROMPT}{style_context}{metadata_context}\n\n"
+            f"User prompt: {prompt}\n\nOutput the JSON plan:"
+        )
 
         try:
             response = await asyncio.to_thread(
