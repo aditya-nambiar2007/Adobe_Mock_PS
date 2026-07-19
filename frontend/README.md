@@ -214,7 +214,7 @@ Extend `indexedDB.js` with a new object store in the `dbPromise` upgrade handler
 | React 19 | UI framework |
 | Vite 8 | Build tool and dev server |
 | Fabric.js 7 | Canvas manipulation |
-| React Flow 12 | History tree visualization |
+| @xyflow/react 12 | History tree visualization |
 | dagre | Graph layout for tree |
 | lucide-react | Icons |
 | Oxlint | Rust-based linter |

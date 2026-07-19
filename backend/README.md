@@ -449,8 +449,9 @@ All settings via `.env` file:
 | `MODEL_CACHE_TIMEOUT_MINUTES` | `30` | How long to keep models in GPU |
 | `DIFFUSION_LORA_WEIGHTS` | `""` | Path to LoRA adapter weights (`.safetensors` or directory); auto-applied on diffusion load |
 | `DIFFUSION_LORA_ADAPTER_NAME` | `default` | Adapter name for the loaded LoRA weights |
+| `MODEL_PATHS` | `{}` | JSON map of model type → local path (e.g. `{"esrgan": "weights/ESRGAN"}`) |
 | `LOG_LEVEL` | `INFO` | Logging: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `CORS_ORIGINS` | `*` | CORS allowed origins (comma-separated) |
+| `CORS_ORIGINS` | `http://localhost:5173` | CORS allowed origins (comma-separated) |
 
 ---
 
@@ -524,11 +525,8 @@ backend/
 │   ├── api/
 │   │   ├── health.py              # GET /health
 │   │   ├── upload.py              # POST /upload
-│   │   └── edit.py                # POST /edit, GET /result/{id}, GET /history/{id}
-│   │
-│   ├── schemas/
-│   │   ├── requests.py            # EditRequest, UploadResponse
-│   │   └── responses.py           # EditResponse, StepInfo, HealthResponse, etc.
+│   │   ├── edit.py                # POST /edit, GET /result/{id}, GET /history/{id}
+│   │   └── analyze.py             # POST /analyze (image understanding)
 │   │
 │   ├── services/
 │   │   ├── gemini_service.py      # google-genai SDK wrapper, GeminiError exception
@@ -537,6 +535,8 @@ backend/
 │   │   ├── diffusion_service.py   # InstructPix2Pix / SD Inpaint wrappers + LoRA adapter loader
 │   │   ├── sam_service.py         # SAM segmentation (ViT-Base, runs on CPU)
 │   │   ├── esrgan_service.py      # ESRGAN upscaling (with PIL fallback)
+│   │   ├── removal_service.py     # LaMa inpainting + rembg background removal
+│   │   ├── person_segmentation_service.py  # Face/body segmentation
 │   │   ├── execution_log.py       # ExecutionLog dataclass (single source of truth for all pipeline ops)
 │   │   ├── pipeline.py            # Operation handler + pipeline executor (context-passing between steps)
 │   │   └── explanation/           # Post-edit explanation service
@@ -546,6 +546,35 @@ backend/
 │   │       ├── prompts.py         # Isolated LLM prompt templates
 │   │       ├── gemini_provider.py # LLM-backed explanation generation
 │   │       └── local_provider.py  # Deterministic fallback (no LLM)
+│   │
+│   ├── planning/                   # Prompt → execution plan
+│   │   ├── planner.py             # PlanningAgent, plan validation
+│   │   └── strategy.py            # ExecutionPlan, PlanStep dataclasses
+│   │
+│   ├── dispatcher/                 # Tool dispatch routing
+│   │   └── dispatcher.py          # ToolDispatcher
+│   │
+│   ├── tools/                      # Editing tool definitions & registry
+│   │   ├── base.py                # EditingTool, ToolSpec ABCs
+│   │   └── registry.py            # ToolRegistry (auto-discovers all tools)
+│   │
+│   ├── vision/                     # Image understanding
+│   │   ├── engine.py              # ImageUnderstandingEngine, SceneMetadata
+│   │   └── analyzers/             # Specialized visual analyzers
+│   │
+│   ├── masks/                      # Mask data structures
+│   │   └── mask.py                # Mask, MaskType
+│   │
+│   ├── layers/                     # Layer/stack abstractions
+│   │   ├── layer.py               # Layer, LayerType, BlendMode
+│   │   └── stack.py               # LayerStack
+│   │
+│   ├── critic/                     # Output critique system
+│   │   └── critic.py              # Critic, CritiqueResult
+│   │
+│   ├── schemas/
+│   │   ├── requests.py            # EditRequest, etc.
+│   │   └── responses.py           # EditResponse, StepInfo, HealthResponse, etc.
 │   │
 │   └── utils/
 │       ├── image_utils.py         # load/save/convert/base64 helpers
@@ -667,22 +696,7 @@ print(f"Done in {data['total_duration_ms']:.0f}ms")
 | InstructPix2Pix | `timbrooks/instruct-pix2pix` | 2.9 GB | ~3.2 GB | GPU (float16) |
 | Stable Diffusion v1.5 | `runwayml/stable-diffusion-v1-5` | 4.3 GB | ~4.5 GB | GPU (float16) |
 
-Models are downloaded from HuggingFace Hub on first use and cached in `~/.cache/huggingface/hub/`.
-
-### Model Pre-Installation (Optional)
-
-To avoid network delays or request timeouts during the first run, you can pre-install and download all backend models beforehand:
-
-#### Option 1: Via CLI Script
-Activate your virtual environment and run the downloader:
-```bash
-python -m app.utils.download_models
-```
-
-#### Option 2: Via API Endpoint
-While the server is running, trigger model download programmatically:
-- **Trigger Download (asynchronous)**: `POST http://localhost:8000/models/install`
-- **Check Status / Cache Status**: `GET http://localhost:8000/models/status`
+Models are downloaded from HuggingFace Hub on first use and cached in `~/.cache/huggingface/hub/`. (ESRGAN weights must be placed manually at `weights/ESRGAN`; the app falls back to PIL bicubic upscale if absent.)
 
 ### LoRA Adapters
 
@@ -744,14 +758,6 @@ self._operation_map["new_effect"] = self.handler.handle_new_effect
 3. Register the model type in `ModelType` enum
 4. Use it from a pipeline handler
 
-### Swap a model
-
-Change the model ID in the service class constant, or set `MODEL_PATHS` in `.env`:
-
-```env
-MODEL_PATHS='{"sam": "my-org/my-sam","diffusion": "my-org/my-diffusion"}'
-```
-
 ---
 
 ## Running in Production
@@ -794,7 +800,6 @@ Consider adding:
 - **google-genai** for Gemini API integration
 - **PyTorch** for model inference
 - **HuggingFace Transformers** (SAM)
-- **HuggingFace Diffusers** (InstructPix2Pix)
+- **HuggingFace Diffusers** (InstructPix2Pix, Stable Diffusion)
 - **Pillow / OpenCV** for image processing
 - **Pydantic v2** for data validation
-- **httpx** for async HTTP

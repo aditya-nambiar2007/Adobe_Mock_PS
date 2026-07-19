@@ -3,22 +3,18 @@ uvicorn[standard]>=0.34.0
 pydantic>=2.10.0
 pydantic-settings>=2.7.0
 python-multipart>=0.0.19
-aiofiles>=24.1.0
-httpx>=0.28.0
 Pillow>=11.1.0
 opencv-python>=4.10.0,<5.0.0
 numpy>=1.26.0
 rembg[cpu]>=2.0.0
 google-genai>=1.0.0
-
-# AI model dependencies (install separately for GPU support):
-# torch>=2.1.0
-# torchvision>=0.16.0
-# transformers>=4.36.0
-# diffusers>=0.26.0
-# accelerate>=0.25.0
-# sentencepiece>=0.1.99
-# protobuf>=3.20.3
-
-# Specialized removal model (LaMa inpainting for object/person removal):
-# simple-lama-inpainting>=0.1.2
+torch>=2.1.0
+torchvision>=0.16.0
+transformers>=4.36.0
+diffusers>=0.26.0
+accelerate>=0.25.0
+sentencepiece>=0.1.99
+protobuf>=3.20.3
+simple-lama-inpainting>=0.1.2
+safetensors>=0.4.0
+huggingface-hub>=0.20.0
